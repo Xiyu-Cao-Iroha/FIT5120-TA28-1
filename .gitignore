@@ -1,0 +1,25 @@
+# Backend (services/api)
+services/api/.venv/
+services/api/__pycache__/
+services/api/**/__pycache__/
+services/api/.pytest_cache/
+services/api/.ruff_cache/
+services/api/.mypy_cache/
+services/api/.env
+services/api/*.egg-info/
+
+# Frontend (apps/mobile)
+apps/mobile/node_modules/
+apps/mobile/.expo/
+apps/mobile/dist/
+apps/mobile/web-build/
+apps/mobile/.env
+
+# Scratch / drafts
+tmp/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.claude/
