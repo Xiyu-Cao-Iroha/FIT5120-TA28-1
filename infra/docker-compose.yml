@@ -1,0 +1,20 @@
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: calmpath
+      POSTGRES_PASSWORD: calmpath
+      POSTGRES_DB: calmpath
+    ports:
+      - "5432:5432"
+    volumes:
+      - calmpath_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U calmpath -d calmpath"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  calmpath_db_data:
