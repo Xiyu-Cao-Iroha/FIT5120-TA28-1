@@ -20,9 +20,7 @@ tmp/
 
 # Internal-only docs/reference material (kept locally, not published)
 App使用说明.md
-CalmPath_App_Development_Requirements.md
 CalmPath_Dev_Requirements_FE_BE.md
-CalmPath_Dev_Requirements_FE_BE_EN.md
 Figma and Acceptance Criteria.docx
 开发者使用说明.md
 自用文件/
