@@ -35,11 +35,19 @@ class PedestrianDataRepository:
         self.max_age = timedelta(minutes=max_observation_age_minutes)
 
     def stats_for_segment(
-        self, polyline: list[tuple[float, float]], now: datetime
+        self,
+        polyline: list[tuple[float, float]],
+        now: datetime,
+        sensor_external_id_prefix: str | None = None,
     ) -> SegmentPedestrianStats:
-        sensors = self.db.execute(
-            select(PedestrianSensor).where(PedestrianSensor.active.is_(True))
-        ).scalars().all()
+        query = select(PedestrianSensor).where(PedestrianSensor.active.is_(True))
+        if sensor_external_id_prefix is not None:
+            # Scopes matching to one demo scenario's own sensors so
+            # overlapping CBD streets (e.g. several scenarios walking along
+            # Swanston St) don't leak another scenario's crowd counts into
+            # this route's score - see route_comparison._demo_sensor_prefix.
+            query = query.where(PedestrianSensor.external_id.like(f"{sensor_external_id_prefix}%"))
+        sensors = self.db.execute(query).scalars().all()
 
         matched_ids = []
         for sensor in sensors:

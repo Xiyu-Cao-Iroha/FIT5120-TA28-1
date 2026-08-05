@@ -28,6 +28,20 @@ def _linestring_wkt(polyline: list[tuple[float, float]]) -> str:
     return f"LINESTRING({coords})"
 
 
+def _demo_sensor_prefix(origin: tuple[float, float], destination: tuple[float, float]) -> str | None:
+    """If (origin, destination) is one of seed.py's pinned demo scenarios,
+    scope sensor matching to that scenario's own sensors only. Several demo
+    scenarios' real Google-routed streets overlap in the compact CBD (most
+    share stretches of Swanston St); without this, a busy scenario's
+    sensors leak into an unrelated scenario's route and defeat the
+    intended Low/High contrast."""
+    from app.seed import DEMO_SCENARIO_KEY_BY_PAIR
+    from app.services.route_snapshot_cache import route_pair_key
+
+    key = DEMO_SCENARIO_KEY_BY_PAIR.get(route_pair_key(origin, destination))
+    return f"demo-{key}-" if key else None
+
+
 def compare_routes(
     db: Session,
     settings: Settings,
@@ -49,6 +63,7 @@ def compare_routes(
         max_observation_age_minutes=settings.default_max_observation_age_minutes,
     )
     repo = PedestrianDataRepository(db, settings.sensor_match_radius_meters, rule.max_observation_age_minutes)
+    sensor_prefix = _demo_sensor_prefix(origin, destination)
 
     candidates = routing_provider.get_candidate_routes(origin, destination)
     snapshot_id = f"snap-{now.strftime('%Y%m%dT%H%M%S')}"
@@ -57,7 +72,10 @@ def compare_routes(
     reco_candidates: list[RouteCandidate] = []
 
     for candidate in candidates:
-        segment_stats = [repo.stats_for_segment(seg.polyline, now) for seg in candidate.segments]
+        segment_stats = [
+            repo.stats_for_segment(seg.polyline, now, sensor_external_id_prefix=sensor_prefix)
+            for seg in candidate.segments
+        ]
 
         covered = sum(1 for s in segment_stats if s.has_coverage)
         data_coverage = covered / len(segment_stats) if segment_stats else 0.0

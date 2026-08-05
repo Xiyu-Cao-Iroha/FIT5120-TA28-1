@@ -4,7 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { BackLink } from "../src/components/BackLink";
 import { PlaceAutocompleteInput } from "../src/components/PlaceAutocompleteInput";
-import { CBD_DEMO_LOCATIONS } from "../src/constants/config";
+import { DEMO_SCENARIOS } from "../src/constants/config";
 import { colors } from "../src/theme/colors";
 
 interface FieldErrors {
@@ -33,11 +33,11 @@ export default function DestinationScreen() {
   const [errors, setErrors] = useState<FieldErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const fillDemoRoute = () => {
-    setOriginText(CBD_DEMO_LOCATIONS.origin.label);
-    setDestinationText(CBD_DEMO_LOCATIONS.destination.label);
-    setOriginPlace({ lat: CBD_DEMO_LOCATIONS.origin.lat, lon: CBD_DEMO_LOCATIONS.origin.lon });
-    setDestinationPlace({ lat: CBD_DEMO_LOCATIONS.destination.lat, lon: CBD_DEMO_LOCATIONS.destination.lon });
+  const fillDemoScenario = (scenario: (typeof DEMO_SCENARIOS)[number]) => {
+    setOriginText(scenario.origin.label);
+    setDestinationText(scenario.destination.label);
+    setOriginPlace({ lat: scenario.origin.lat, lon: scenario.origin.lon });
+    setDestinationPlace({ lat: scenario.destination.lat, lon: scenario.destination.lon });
     setErrors({});
   };
 
@@ -132,14 +132,23 @@ export default function DestinationScreen() {
         <Text style={styles.submitButtonText}>{isSubmitting ? "Checking..." : "Find sensory-friendly routes"}</Text>
       </Pressable>
 
-      <Pressable
-        style={styles.demoLink}
-        onPress={fillDemoRoute}
-        accessibilityRole="button"
-        accessibilityLabel="Fill in the demo route from Flinders Street Station to State Library Victoria"
-      >
-        <Text style={styles.demoLinkText}>Use demo route</Text>
-      </Pressable>
+      <Text style={styles.demoSectionLabel}>DEMO SCENARIOS</Text>
+      <View style={styles.demoList}>
+        {DEMO_SCENARIOS.map((scenario) => (
+          <Pressable
+            key={scenario.key}
+            style={styles.demoRow}
+            onPress={() => fillDemoScenario(scenario)}
+            accessibilityRole="button"
+            accessibilityLabel={`Use demo scenario: ${scenario.label}, from ${scenario.origin.label} to ${scenario.destination.label}`}
+          >
+            <Text style={styles.demoRowLabel}>{scenario.label}</Text>
+            <Text style={styles.demoRowRoute}>
+              {scenario.origin.label} → {scenario.destination.label}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
     </ScrollView>
   );
 }
@@ -160,6 +169,24 @@ const styles = StyleSheet.create({
   },
   submitButtonDisabled: { opacity: 0.6 },
   submitButtonText: { color: "white", fontSize: 16, fontWeight: "700" },
-  demoLink: { alignSelf: "center", paddingVertical: 10, minHeight: 44, justifyContent: "center" },
-  demoLinkText: { color: colors.primary, fontWeight: "600", fontSize: 14 },
+  demoSectionLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: colors.caption,
+    letterSpacing: 0.6,
+    marginTop: 10,
+  },
+  demoList: { gap: 8 },
+  demoRow: {
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    minHeight: 44,
+    justifyContent: "center",
+    backgroundColor: colors.cardBackground,
+  },
+  demoRowLabel: { fontSize: 14, fontWeight: "600", color: colors.primary },
+  demoRowRoute: { fontSize: 12, color: colors.caption, marginTop: 2 },
 });
