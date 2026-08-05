@@ -17,6 +17,8 @@ Next-hour crowd prediction (US 2.2) is explicitly **not** implemented — it's o
 
 Routing and address search now support **Google Maps Platform** (Directions API + Places API) as a real production backend, isolated behind the existing `RoutingProvider`/`PlacesProvider` adapters — set `GOOGLE_MAPS_API_KEY` in `services/api/.env` to switch both over with no other code change. Leave it unset and the app falls back to the demo routing provider and a small CBD gazetteer, so it still runs end-to-end without any API key. See "Environment variables" below.
 
+The route map, quiet-places, and quiet-place-detail screens also render a **real Google Map** (web, via `@react-google-maps/api`) instead of the earlier schematic SVG diagram — congested segments are drawn as a red overlay polyline, and refuge candidates are clickable pin markers. This needs its own client-visible key (`EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` in `apps/mobile/.env`) with **Maps JavaScript API** enabled in Google Cloud Console (a separate API from Directions/Places) — see "Environment variables" below for the security note on why this key is necessarily public.
+
 The pedestrian data source itself is still seeded demo data until the City of Melbourne open-data ingestion pipeline is confirmed with the teaching team. Refuge candidates are similarly seeded demo data (one, State Library Victoria, mirrors a real public location; the other two are prototype placeholders — each is labelled with its actual data source in the UI, per product principle 14.2).
 
 ## Tech stack
@@ -124,15 +126,16 @@ npx tsc --noEmit
 | `services/api/.env` | `DATABASE_URL` | Postgres connection string |
 | `services/api/.env` | `CORS_ORIGINS` | Allowed origins for the mobile app (dev server) |
 | `services/api/.env` | `CBD_MIN_LAT` / `CBD_MAX_LAT` / `CBD_MIN_LON` / `CBD_MAX_LON` | Melbourne CBD service-boundary bounding box (placeholder pending formal confirmation) |
-| `services/api/.env` | `GOOGLE_MAPS_API_KEY` | Optional. Set to enable real walking routes (Directions API) and real address search (Places API). Needs both APIs enabled on the key's Google Cloud project. Leave blank to use the demo provider/gazetteer. |
+| `services/api/.env` | `GOOGLE_MAPS_API_KEY` | Optional. Set to enable real walking routes (Directions API) and real address search (Places API). Needs both APIs enabled on the key's Google Cloud project. Leave blank to use the demo provider/gazetteer. Server-side only, never sent to the browser. |
 | `apps/mobile/.env` | `EXPO_PUBLIC_API_BASE_URL` | Base URL the app calls, e.g. `http://localhost:8000/api/v1` |
+| `apps/mobile/.env` | `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` | Optional. Set to render the real map view. Needs **Maps JavaScript API** enabled (separately from the backend key's Directions/Places APIs) — without it the map fails with `ApiNotActivatedMapError` in the browser console. This key is unavoidably visible in the client bundle/page source; restrict it by HTTP referrer in Google Cloud Console for anything beyond local dev. |
 
-The Google Maps key is only ever used **server-side** (Directions/Places calls happen from the backend, not the browser) — the mobile app never needs its own copy of it.
+The backend's `GOOGLE_MAPS_API_KEY` and the mobile app's `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` can be the same key (reused in this project) or different keys — the backend one only ever runs server-side, while the mobile one is embedded in the page source by necessity, so it has a different risk profile even when the value happens to match.
 
 ## Known limitations
 
 - Without `GOOGLE_MAPS_API_KEY` set, routing falls back to a fixed two-route demo generator and address search falls back to a 5-place gazetteer.
-- The map itself is still a schematic SVG diagram (grid + route line), not real map tiles — Google is used for real routing/address data, deliberately not for a visual basemap.
+- Without `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` (or without Maps JavaScript API enabled on it), the map area shows a "Map failed to load" placeholder instead of crashing the screen.
 - Pedestrian data is seeded manually, not ingested from City of Melbourne open data (and expires 30 minutes after seeding — see above).
 - Refuge ("quiet place") candidates are seeded manually into the `places` table, not a real search over open data.
 - No user accounts, offline maps, turn-by-turn navigation, or next-hour prediction (out of scope for this iteration — see requirements section 4.4).
