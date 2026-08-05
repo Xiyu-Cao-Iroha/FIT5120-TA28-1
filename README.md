@@ -111,7 +111,9 @@ cp .env.example .env   # point EXPO_PUBLIC_API_BASE_URL at your running API
 npm run web             # or: npm run android / npm run ios
 ```
 
-The app opens on a Preference Setup screen (crowd-sensitivity choice) before Destination. DestinationScreen has a **"Use demo route"** button that fills in a seeded origin/destination pair (Flinders Street Station → State Library Victoria) matching `app/seed.py`, so you can try the full journey without geocoding. From the route map screen, "Show quiet places" opens the refuge-selection flow.
+The app opens on a Preference Setup screen (crowd-sensitivity choice) before Destination. DestinationScreen has a **"Demo scenarios"** section with 4 buttons, each filling in a seeded origin/destination pair matching `app/seed.py`'s `DEMO_SCENARIOS`, so you can try the full journey without geocoding: a Low vs High contrast, an all-routes-congested state, a one-route-unavailable state, and a second Low vs High pair near the refuge candidates. From the route map screen, "Show quiet places" opens the refuge-selection flow.
+
+Each demo pair's exact route geometry (from whichever provider is live at seed time) is pinned in `services/api/demo_route_cache.json` and replayed on every later request for that same pair — see "Demo scenario reliability" below for why.
 
 ### Frontend checks
 
@@ -131,6 +133,15 @@ npx tsc --noEmit
 | `apps/mobile/.env` | `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` | Optional. Set to render the real map view. Needs **Maps JavaScript API** enabled (separately from the backend key's Directions/Places APIs) — without it the map fails with `ApiNotActivatedMapError` in the browser console. This key is unavoidably visible in the client bundle/page source; restrict it by HTTP referrer in Google Cloud Console for anything beyond local dev. |
 
 The backend's `GOOGLE_MAPS_API_KEY` and the mobile app's `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` can be the same key (reused in this project) or different keys — the backend one only ever runs server-side, while the mobile one is embedded in the page source by necessity, so it has a different risk profile even when the value happens to match.
+
+## Demo scenario reliability
+
+The 4 demo scenarios in `app/seed.py` need to reproduce the same Low/High/Unavailable outcome every time, which two things get in the way of when `GOOGLE_MAPS_API_KEY` is live:
+
+- **Google Directions isn't guaranteed to return the same alternative routes twice.** `CachedSnapshotRoutingProvider` (`routing_adapter.py`) wraps the live provider: `seed.py` saves each demo pair's fetched routes to `demo_route_cache.json` once, and any later request for that exact (origin, destination) replays the cached routes instead of asking Google again. Non-demo pairs pass through live as normal.
+- **Real CBD streets seeded for different demo scenarios often overlap** (most routes in the compact grid share a stretch of Swanston St or similar), so a live sensor-match query would otherwise average in another scenario's crowd counts. `route_comparison.py` scopes sensor matching to one scenario's own sensors (`demo-{scenario.key}-*`) whenever the requested pair matches a pinned scenario in `DEMO_SCENARIO_KEY_BY_PAIR`; freeform pairs still match against all active sensors.
+
+Re-run `python -m app.seed` after changing `DEMO_SCENARIOS` and delete `demo_route_cache.json` first so it re-pins fresh routes for the new pairs.
 
 ## Known limitations
 
