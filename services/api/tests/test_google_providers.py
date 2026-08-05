@@ -7,7 +7,11 @@ from app.services.places_provider import (
     PlaceSuggestion,
     get_places_provider,
 )
-from app.services.routing_adapter import DemoMelbourneCbdRoutingProvider, GoogleDirectionsRoutingProvider, get_routing_provider
+from app.services.routing_adapter import (
+    DemoMelbourneCbdRoutingProvider,
+    GoogleDirectionsRoutingProvider,
+    get_routing_provider,
+)
 
 
 class _FakeResponse:
@@ -30,12 +34,15 @@ _FAKE_ENCODED_POLYLINE = "_p~iF~ps|U_ulLnnqC_mqNvxq`@"
 
 
 def test_get_routing_provider_falls_back_to_demo_without_api_key():
-    assert isinstance(get_routing_provider(None), DemoMelbourneCbdRoutingProvider)
-    assert isinstance(get_routing_provider(""), DemoMelbourneCbdRoutingProvider)
+    # get_routing_provider always wraps the selected provider in
+    # CachedSnapshotRoutingProvider (see routing_adapter.py) so pinned demo
+    # pairs stay repeatable; check the wrapped provider underneath.
+    assert isinstance(get_routing_provider(None).inner, DemoMelbourneCbdRoutingProvider)
+    assert isinstance(get_routing_provider("").inner, DemoMelbourneCbdRoutingProvider)
 
 
 def test_get_routing_provider_uses_google_with_api_key():
-    assert isinstance(get_routing_provider("fake-key"), GoogleDirectionsRoutingProvider)
+    assert isinstance(get_routing_provider("fake-key").inner, GoogleDirectionsRoutingProvider)
 
 
 def test_google_directions_parses_routes(monkeypatch):

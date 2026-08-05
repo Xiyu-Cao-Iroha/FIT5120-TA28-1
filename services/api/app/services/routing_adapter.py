@@ -153,13 +153,39 @@ class GoogleDirectionsRoutingProvider(RoutingProvider):
         return routes
 
 
+class CachedSnapshotRoutingProvider(RoutingProvider):
+    """Wraps another provider: for a pinned (origin, destination) pair with
+    a saved snapshot, replays it instead of calling the inner provider
+    again. A live provider like Google Directions isn't guaranteed to
+    return byte-identical alternatives (same routes, same order) between
+    two separate calls - without this, seed.py's sensor placement (one API
+    call) can silently drift from what a later live comparison request
+    (a different API call) actually returns, breaking the intended demo
+    outcome. Any (origin, destination) without a snapshot passes straight
+    through, so ad-hoc searches stay fully live."""
+
+    def __init__(self, inner: RoutingProvider):
+        self.inner = inner
+
+    def get_candidate_routes(
+        self, origin: tuple[float, float], destination: tuple[float, float]
+    ) -> list[CandidateRoute]:
+        from app.services.route_snapshot_cache import get_snapshot
+
+        cached = get_snapshot(origin, destination)
+        if cached is not None:
+            return cached
+        return self.inner.get_candidate_routes(origin, destination)
+
+
 def get_routing_provider(api_key: str | None, timeout_seconds: float = 8.0) -> RoutingProvider:
     """Section 20 decision #3: routing provider selection. Demo routes back
     the MVP until a production provider is confirmed; set
-    GOOGLE_MAPS_API_KEY to switch to real routing with no other change."""
-    if api_key:
-        return GoogleDirectionsRoutingProvider(api_key, timeout_seconds)
-    return DemoMelbourneCbdRoutingProvider()
+    GOOGLE_MAPS_API_KEY to switch to real routing with no other change.
+    Wrapped in CachedSnapshotRoutingProvider so pinned demo pairs (see
+    app/seed.py) stay perfectly repeatable regardless of provider."""
+    base = GoogleDirectionsRoutingProvider(api_key, timeout_seconds) if api_key else DemoMelbourneCbdRoutingProvider()
+    return CachedSnapshotRoutingProvider(base)
 
 
 def _polyline_length_m(polyline: list[tuple[float, float]]) -> float:
