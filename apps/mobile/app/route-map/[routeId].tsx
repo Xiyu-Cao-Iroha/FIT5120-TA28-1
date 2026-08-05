@@ -1,4 +1,5 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { useRouteDetail } from "../../src/api/queries";
@@ -25,6 +26,7 @@ export default function RouteMapScreen() {
   const router = useRouter();
   const { routeId } = useLocalSearchParams<{ routeId: string }>();
   const { data: route, error, isPending } = useRouteDetail(routeId);
+  const [segmentsExpanded, setSegmentsExpanded] = useState(false);
 
   const goBackToComparison = () => router.back();
 
@@ -71,16 +73,31 @@ export default function RouteMapScreen() {
         <Text style={styles.whyBody}>{route.explanation}</Text>
       </View>
 
-      <Text style={styles.sectionTitle}>Congested segments ({route.congested_segments.length})</Text>
       {route.congested_segments.length === 0 ? (
-        <Text style={styles.detailItem}>No highly congested segments identified on this route.</Text>
+        <>
+          <Text style={styles.sectionTitle}>Congested segments (0)</Text>
+          <Text style={styles.detailItem}>No highly congested segments identified on this route.</Text>
+        </>
       ) : (
-        route.congested_segments.map((segment) => (
-          <Text key={segment.sequence} style={styles.detailItem}>
-            Segment {segment.sequence + 1}: {segment.sensory_level === "high" ? "High Sensory" : "Low Sensory"}
-            {segment.crowd_score != null ? ` (score ${segment.crowd_score.toFixed(2)})` : ""}
-          </Text>
-        ))
+        <>
+          <Pressable
+            style={styles.collapsibleHeader}
+            onPress={() => setSegmentsExpanded((expanded) => !expanded)}
+            accessibilityRole="button"
+            accessibilityLabel={`${segmentsExpanded ? "Hide" : "Show"} congested segment details`}
+            accessibilityState={{ expanded: segmentsExpanded }}
+          >
+            <Text style={styles.sectionTitle}>Congested segments ({route.congested_segments.length})</Text>
+            <Text style={styles.collapsibleToggle}>{segmentsExpanded ? "Hide ▲" : "Show ▼"}</Text>
+          </Pressable>
+          {segmentsExpanded &&
+            route.congested_segments.map((segment) => (
+              <Text key={segment.sequence} style={styles.detailItem}>
+                Segment {segment.sequence + 1}: {segment.sensory_level === "high" ? "High Sensory" : "Low Sensory"}
+                {segment.crowd_score != null ? ` (score ${segment.crowd_score.toFixed(2)})` : ""}
+              </Text>
+            ))}
+        </>
       )}
 
       <Text style={styles.sectionTitle}>Route details</Text>
@@ -135,6 +152,13 @@ const styles = StyleSheet.create({
   whyBody: { fontSize: 14, color: colors.body, lineHeight: 20 },
   sectionTitle: { fontSize: 13, fontWeight: "700", color: colors.caption, letterSpacing: 0.4, marginTop: 10 },
   detailItem: { fontSize: 14, color: colors.body, lineHeight: 20 },
+  collapsibleHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    minHeight: 44,
+  },
+  collapsibleToggle: { fontSize: 13, fontWeight: "700", color: colors.primary },
   errorTitle: { fontSize: 18, fontWeight: "700", color: colors.heading, textAlign: "center" },
   errorBody: { fontSize: 15, color: colors.body, textAlign: "center" },
   primaryButton: {
