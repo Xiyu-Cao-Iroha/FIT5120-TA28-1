@@ -45,6 +45,10 @@ Documentation:
 - [`CalmPath_App_Development_Requirements.md`](CalmPath_App_Development_Requirements.md) — full development baseline (requirements, API contract, DB schema, acceptance criteria, test plan)
 - [`CalmPath_Dev_Requirements_FE_BE.md`](CalmPath_Dev_Requirements_FE_BE.md) / [`_EN.md`](CalmPath_Dev_Requirements_FE_BE_EN.md) — condensed frontend/backend-only reference (Chinese / English)
 
+## Git workflow
+
+Two long-lived branches: `main` (stable, always in a working/demo-able state) and `develop` (day-to-day work). Do feature work on `develop`, commit there, and only merge into `main` when the app is in a state you'd be happy demoing or handing in. CI runs on pushes/PRs to both.
+
 ## Prerequisites
 
 - Python 3.11+ (tested with 3.13)
