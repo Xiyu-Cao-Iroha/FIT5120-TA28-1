@@ -51,6 +51,16 @@ Documentation:
 - Node.js 18+ and npm
 - Docker Desktop (for Postgres/PostGIS)
 
+## One-command dev startup
+
+Once you've done the one-time setup below at least once (`.venv` created, `npm install` run, both `.env` files in place), `scripts/dev-start.ps1` starts everything for you: Postgres (docker compose), the backend (uvicorn on :8010, in its own window), and the frontend (Expo web on :8081, in its own window). It's safe to re-run — it checks each port first and skips anything already running instead of starting a duplicate.
+
+```powershell
+./scripts/dev-start.ps1
+```
+
+Each server keeps running in its own PowerShell window; close that window (or Ctrl+C inside it) to stop it.
+
 ## Backend setup (`services/api`)
 
 ```bash
