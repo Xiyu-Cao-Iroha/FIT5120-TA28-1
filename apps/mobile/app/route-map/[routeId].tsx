@@ -4,7 +4,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { useRouteDetail } from "../../src/api/queries";
 import type { RouteOption } from "../../src/api/schemas";
 import { BackLink } from "../../src/components/BackLink";
-import { RouteSvgMap } from "../../src/components/RouteSvgMap";
+import { RouteGoogleMap } from "../../src/components/RouteGoogleMap";
 import { colors } from "../../src/theme/colors";
 
 function subtitleFor(route: RouteOption): string {
@@ -63,11 +63,7 @@ export default function RouteMapScreen() {
       </Text>
       <Text style={styles.subtitle}>{subtitleFor(route)}</Text>
 
-      <RouteSvgMap
-        routeGeometry={route.geometry}
-        congestedSegments={route.congested_segments}
-        sensoryLevel={route.sensory_level}
-      />
+      <RouteGoogleMap routeGeometry={route.geometry} congestedSegments={route.congested_segments} />
 
       <View style={styles.whyCard}>
         <Text style={styles.whyLabel}>WHY THIS ROUTE</Text>

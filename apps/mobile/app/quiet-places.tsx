@@ -4,7 +4,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 
 import { useRefuges, useRouteDetail } from "../src/api/queries";
 import { BackLink } from "../src/components/BackLink";
-import { QuietPlacesMap } from "../src/components/QuietPlacesMap";
+import { QuietPlacesGoogleMap } from "../src/components/QuietPlacesGoogleMap";
 import { colors } from "../src/theme/colors";
 
 // FR-09 (US 2.1, Stretch): search for refuge candidates near the selected
@@ -50,7 +50,7 @@ export default function QuietPlacesScreen() {
         <BackLink label="Route" onPress={goBackToRoute} />
         <Text style={styles.title}>No quiet places nearby</Text>
         <Text style={styles.subtitle}>No nearby sensory refuge locations found.</Text>
-        <QuietPlacesMap routeGeometry={route.geometry} refuges={[]} selectedId={null} onSelect={() => {}} />
+        <QuietPlacesGoogleMap routeGeometry={route.geometry} refuges={[]} selectedId={null} onSelect={() => {}} />
         <Text style={styles.footerCaption}>Try expanding the search area or continue on your selected route.</Text>
         <Pressable
           style={styles.primaryButton}
@@ -72,7 +72,7 @@ export default function QuietPlacesScreen() {
       <Text style={styles.title}>Choose a quiet place</Text>
       <Text style={styles.subtitle}>Tap a + marker to select a verified sensory refuge near {route.name}.</Text>
 
-      <QuietPlacesMap
+      <QuietPlacesGoogleMap
         routeGeometry={route.geometry}
         refuges={refugeData.refuges}
         selectedId={selectedId}

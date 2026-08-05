@@ -4,7 +4,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 
 import { useRefugeDetail, useRouteDetail } from "../../src/api/queries";
 import { BackLink } from "../../src/components/BackLink";
-import { QuietPlacesMap } from "../../src/components/QuietPlacesMap";
+import { QuietPlacesGoogleMap } from "../../src/components/QuietPlacesGoogleMap";
 import { colors } from "../../src/theme/colors";
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -60,7 +60,7 @@ export default function QuietPlaceDetailScreen() {
       <Text style={styles.title}>{refuge.name}</Text>
       <Text style={styles.subtitle}>Review the location before opening full details.</Text>
 
-      <QuietPlacesMap
+      <QuietPlacesGoogleMap
         routeGeometry={route.geometry}
         refuges={[refuge]}
         selectedId={refuge.id}
