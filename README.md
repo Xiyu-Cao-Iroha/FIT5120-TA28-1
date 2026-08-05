@@ -86,14 +86,14 @@ cd ../services/api
 Run the API:
 
 ```bash
-./.venv/Scripts/python -m uvicorn app.main:app --reload --port 8000
+./.venv/Scripts/python -m uvicorn app.main:app --reload --port 8010
 ```
 
-> **Windows note:** port 8000 can fall inside Windows' TCP excluded-port range (`netsh interface ipv4 show excludedportrange protocol=tcp`). If the server fails to bind, pick another port (e.g. `--port 8010`) and update `EXPO_PUBLIC_API_BASE_URL` in `apps/mobile/.env` to match.
+> **Windows note:** port 8000 (FastAPI/uvicorn's usual default) can fall inside Windows' TCP excluded-port range (`netsh interface ipv4 show excludedportrange protocol=tcp`), so this project standardises on **8010** instead — `apps/mobile/.env.example`'s `EXPO_PUBLIC_API_BASE_URL` already points there. If 8010 also happens to be excluded on your machine, pick another free port and update `EXPO_PUBLIC_API_BASE_URL` in `apps/mobile/.env` to match.
 >
 > `--reload` (via WatchFiles) has occasionally missed rapid successive edits on Windows in testing. If the server seems to be serving stale code after a save, stop it and start it again without relying on the reload.
 
-API docs: `http://localhost:8000/docs`. Health check: `GET /api/v1/health`.
+API docs: `http://localhost:8010/docs`. Health check: `GET /api/v1/health`.
 
 ### Backend tests
 
@@ -129,7 +129,7 @@ npx tsc --noEmit
 | `services/api/.env` | `CORS_ORIGINS` | Allowed origins for the mobile app (dev server) |
 | `services/api/.env` | `CBD_MIN_LAT` / `CBD_MAX_LAT` / `CBD_MIN_LON` / `CBD_MAX_LON` | Melbourne CBD service-boundary bounding box (placeholder pending formal confirmation) |
 | `services/api/.env` | `GOOGLE_MAPS_API_KEY` | Optional. Set to enable real walking routes (Directions API) and real address search (Places API). Needs both APIs enabled on the key's Google Cloud project. Leave blank to use the demo provider/gazetteer. Server-side only, never sent to the browser. |
-| `apps/mobile/.env` | `EXPO_PUBLIC_API_BASE_URL` | Base URL the app calls, e.g. `http://localhost:8000/api/v1` |
+| `apps/mobile/.env` | `EXPO_PUBLIC_API_BASE_URL` | Base URL the app calls, e.g. `http://localhost:8010/api/v1` |
 | `apps/mobile/.env` | `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` | Optional. Set to render the real map view. Needs **Maps JavaScript API** enabled (separately from the backend key's Directions/Places APIs) — without it the map fails with `ApiNotActivatedMapError` in the browser console. This key is unavoidably visible in the client bundle/page source; restrict it by HTTP referrer in Google Cloud Console for anything beyond local dev. |
 
 The backend's `GOOGLE_MAPS_API_KEY` and the mobile app's `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` can be the same key (reused in this project) or different keys — the backend one only ever runs server-side, while the mobile one is embedded in the page source by necessity, so it has a different risk profile even when the value happens to match.
