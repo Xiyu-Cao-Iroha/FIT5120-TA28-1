@@ -230,7 +230,13 @@ def seed() -> None:
                 DataSource(
                     id=uuid.uuid4(),
                     name="City of Melbourne Pedestrian Counting System (demo)",
-                    url="https://data.melbourne.vic.gov.au/",
+                    # Past Hour (Counts per Minute) is the closest real dataset to what
+                    # pedestrian_observations models here (short-interval counts per
+                    # sensor). Companion datasets not yet wired up: Sensor Locations
+                    # (data.melbourne.vic.gov.au/explore/dataset/pedestrian-counting-system-sensor-locations)
+                    # and Monthly Counts per Hour
+                    # (data.melbourne.vic.gov.au/explore/dataset/pedestrian-counting-system-monthly-counts-per-hour).
+                    url="https://data.melbourne.vic.gov.au/explore/dataset/pedestrian-counting-system-past-hour-counts-per-minute",
                     licence="CC BY 4.0",
                     refresh_interval_minutes=15,
                 )
