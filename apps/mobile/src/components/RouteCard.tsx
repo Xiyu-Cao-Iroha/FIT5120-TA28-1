@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import type { RouteOption } from "../api/schemas";
+import { formatDistanceKm } from "../lib/format";
 import { describeFreshness } from "../lib/freshness";
 import { colors } from "../theme/colors";
 import { SensoryBadge } from "./SensoryBadge";
@@ -30,7 +31,10 @@ export function RouteCard({ route, onPress }: Props) {
     >
       <View style={styles.headerRow}>
         <Text style={styles.name}>{route.name}</Text>
-        <Text style={styles.duration}>{route.duration_minutes} min</Text>
+        <View style={styles.metrics}>
+          <Text style={styles.duration}>{route.duration_minutes} min</Text>
+          <Text style={styles.distance}>{formatDistanceKm(route.distance_meters)}</Text>
+        </View>
       </View>
 
       <SensoryBadge level={route.sensory_level} />
@@ -51,9 +55,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.cardBackground,
   },
   recommendedCard: { borderColor: colors.primary, borderWidth: 2 },
-  headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", gap: 8 },
+  headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 8 },
   name: { fontSize: 18, fontWeight: "700", color: colors.heading, flexShrink: 1 },
+  metrics: { alignItems: "flex-end" },
   duration: { fontSize: 15, fontWeight: "600", color: colors.heading },
+  distance: { fontSize: 13, color: colors.caption },
   explanation: { fontSize: 14, color: colors.body, lineHeight: 20 },
   freshness: { fontSize: 12, color: colors.caption },
 });

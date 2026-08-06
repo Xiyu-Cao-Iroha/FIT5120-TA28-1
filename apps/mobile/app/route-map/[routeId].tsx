@@ -6,6 +6,7 @@ import { useRouteDetail } from "../../src/api/queries";
 import type { RouteOption } from "../../src/api/schemas";
 import { BackLink } from "../../src/components/BackLink";
 import { RouteGoogleMap } from "../../src/components/RouteGoogleMap";
+import { formatDistanceKm } from "../../src/lib/format";
 import { colors } from "../../src/theme/colors";
 
 function subtitleFor(route: RouteOption): string {
@@ -61,7 +62,7 @@ export default function RouteMapScreen() {
     <ScrollView contentContainerStyle={styles.container}>
       <BackLink label="Routes" onPress={goBackToComparison} />
       <Text style={styles.title}>
-        {route.name} · {route.duration_minutes} min
+        {route.name} · {formatDistanceKm(route.distance_meters)} · {route.duration_minutes} min
       </Text>
       <Text style={styles.subtitle}>{subtitleFor(route)}</Text>
 
