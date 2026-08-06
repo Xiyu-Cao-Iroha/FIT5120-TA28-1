@@ -5,6 +5,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { useRefugeDetail, useRouteDetail } from "../../src/api/queries";
 import { BackLink } from "../../src/components/BackLink";
 import { QuietPlacesGoogleMap } from "../../src/components/QuietPlacesGoogleMap";
+import { formatDistanceKm } from "../../src/lib/format";
 import { colors } from "../../src/theme/colors";
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -58,7 +59,6 @@ export default function QuietPlaceDetailScreen() {
     <ScrollView contentContainerStyle={styles.container}>
       <BackLink label="Quiet places" onPress={goBackToQuietPlaces} />
       <Text style={styles.title}>{refuge.name}</Text>
-      <Text style={styles.subtitle}>Review the location before opening full details.</Text>
 
       <QuietPlacesGoogleMap
         routeGeometry={route.geometry}
@@ -69,6 +69,9 @@ export default function QuietPlaceDetailScreen() {
 
       <View style={styles.infoCard}>
         <Text style={styles.categoryLabel}>{categoryLabel}</Text>
+        <Text style={styles.walkMetrics}>
+          {formatDistanceKm(refuge.walk_distance_meters)} · {refuge.walk_duration_minutes} min walk
+        </Text>
         <Text style={styles.address}>{refuge.address}</Text>
         <Text style={styles.description}>{refuge.facility_info || refuge.short_description}</Text>
         <Text style={styles.sourceNote}>{refuge.source_note}</Text>
@@ -105,7 +108,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.pageBackground,
   },
   title: { fontSize: 22, fontWeight: "700", color: colors.heading },
-  subtitle: { fontSize: 14, color: colors.body },
   infoCard: {
     borderWidth: 1,
     borderColor: colors.cardBorder,
@@ -115,7 +117,8 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   categoryLabel: { fontSize: 11, fontWeight: "700", color: colors.caption, letterSpacing: 0.6 },
-  address: { fontSize: 16, fontWeight: "700", color: colors.heading },
+  walkMetrics: { fontSize: 16, fontWeight: "700", color: colors.heading },
+  address: { fontSize: 14, fontWeight: "400", color: colors.body },
   description: { fontSize: 14, color: colors.body, lineHeight: 20 },
   sourceNote: { fontSize: 12, color: colors.caption, marginTop: 4 },
   confirmedBox: {

@@ -78,6 +78,8 @@ export type RefugeListResponse = z.infer<typeof RefugeListResponseSchema>;
 export const RefugeDetailSchema = RefugeSummarySchema.extend({
   facility_info: z.string(),
   source_note: z.string(),
+  walk_distance_meters: z.number(),
+  walk_duration_minutes: z.number(),
 });
 export type RefugeDetail = z.infer<typeof RefugeDetailSchema>;
 

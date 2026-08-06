@@ -115,6 +115,11 @@ class RefugeListResponse(BaseModel):
 class RefugeDetail(RefugeSummary):
     facility_info: str
     source_note: str
+    # Straight-line walk from the route's origin (current location) to this
+    # refuge - distinct from distance_meters, which is how far the refuge
+    # sits off the route itself.
+    walk_distance_meters: float
+    walk_duration_minutes: float
 
 
 class PlaceSuggestion(BaseModel):

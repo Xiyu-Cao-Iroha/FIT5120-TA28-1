@@ -8,8 +8,10 @@ from app.db import get_db
 from app.errors import ApiError
 from app.models import Place
 from app.schemas import RefugeDetail, RefugeListResponse, RefugeSource, RefugeSummary
+from app.services.geo import haversine_distance_meters, parse_linestring_wkt
 from app.services.refuge_repository import find_refuge_distance, find_refuges_near_route
 from app.services.route_cache import get_route
+from app.services.routing_adapter import WALKING_METERS_PER_MINUTE
 
 router = APIRouter()
 
@@ -72,8 +74,15 @@ def get_refuge_detail(place_id: str, route_id: str = Query(...), db: Session = D
 
     summary = _to_summary(place, distance)
     meta = place.place_metadata or {}
+
+    route_points = parse_linestring_wkt(route.geometry)
+    origin_lat, origin_lon = route_points[0]
+    walk_distance = haversine_distance_meters(origin_lat, origin_lon, summary.lat, summary.lon)
+
     return RefugeDetail(
         **summary.model_dump(),
         facility_info=meta.get("facility_info", ""),
         source_note=meta.get("source_note", ""),
+        walk_distance_meters=round(walk_distance, 1),
+        walk_duration_minutes=round(walk_distance / WALKING_METERS_PER_MINUTE, 1),
     )
