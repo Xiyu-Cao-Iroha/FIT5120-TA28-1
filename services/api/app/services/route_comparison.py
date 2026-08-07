@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.config import Settings
 from app.schemas import CongestedSegment, CrowdSensitivity, RouteCompareResponse, RouteOptionOut
 from app.services.classification import ClassificationRuleConfig, classify
+from app.services.melbourne_open_data import MelbourneOpenDataPedestrianRepository
 from app.services.pedestrian_repository import PedestrianDataRepository
 from app.services.recommendation import RouteCandidate, apply_recommendation
 from app.services.routing_adapter import RoutingProvider
@@ -62,8 +63,19 @@ def compare_routes(
         min_data_coverage=settings.default_min_data_coverage,
         max_observation_age_minutes=settings.default_max_observation_age_minutes,
     )
-    repo = PedestrianDataRepository(db, settings.sensor_match_radius_meters, rule.max_observation_age_minutes)
     sensor_prefix = _demo_sensor_prefix(origin, destination)
+    if sensor_prefix is None and settings.use_live_pedestrian_data:
+        # Pinned demo pairs never take this path, even with the flag on -
+        # they must stay reliable for a presentation regardless of the City
+        # of Melbourne API's availability or the network at demo time.
+        repo = MelbourneOpenDataPedestrianRepository(
+            settings.sensor_match_radius_meters,
+            rule.max_observation_age_minutes,
+            cbd_bounds=(settings.cbd_min_lat, settings.cbd_max_lat, settings.cbd_min_lon, settings.cbd_max_lon),
+            timeout_seconds=settings.melbourne_open_data_timeout_seconds,
+        )
+    else:
+        repo = PedestrianDataRepository(db, settings.sensor_match_radius_meters, rule.max_observation_age_minutes)
 
     candidates = routing_provider.get_candidate_routes(origin, destination)
     snapshot_id = f"snap-{now.strftime('%Y%m%dT%H%M%S')}"

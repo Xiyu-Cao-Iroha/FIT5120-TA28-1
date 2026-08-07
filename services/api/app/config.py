@@ -39,6 +39,15 @@ class Settings(BaseSettings):
     google_maps_api_key: str | None = None
     google_maps_request_timeout_seconds: float = 8.0
 
+    # FR-03: when true, non-demo route comparisons fetch live pedestrian crowd
+    # data from the City of Melbourne open data portal (no API key needed)
+    # instead of the seeded PedestrianDataRepository. Pinned demo scenarios
+    # always use the seeded data regardless of this flag - see
+    # route_comparison.py. Off by default so a fresh clone works without
+    # network access; enable explicitly once you want live data.
+    use_live_pedestrian_data: bool = False
+    melbourne_open_data_timeout_seconds: float = 8.0
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

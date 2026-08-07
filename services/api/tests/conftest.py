@@ -11,6 +11,7 @@ os.environ["DATABASE_URL"] = TEST_DATABASE_URL
 # mock httpx.get directly (see test_google_providers.py) rather than
 # relying on a real key.
 os.environ["GOOGLE_MAPS_API_KEY"] = ""
+os.environ["USE_LIVE_PEDESTRIAN_DATA"] = "false"
 
 import pytest  # noqa: E402
 from sqlalchemy import create_engine  # noqa: E402
