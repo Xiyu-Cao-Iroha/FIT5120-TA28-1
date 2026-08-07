@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, timezone
 
 import httpx
 
-from app.services.melbourne_open_data import MelbourneOpenDataPedestrianRepository
+from app.services.melbourne_open_data import MelbourneOpenDataPedestrianRepository, fetch_quiet_place_landmarks
 
 CBD_BOUNDS = (-37.8230, -37.8050, 144.9400, 144.9700)
 
@@ -120,3 +120,41 @@ def test_network_failure_returns_no_coverage_instead_of_raising(monkeypatch):
     assert stats.sensor_count == 0
     assert not stats.has_coverage
     assert stats.crowd_score is None
+
+
+def test_fetch_quiet_place_landmarks_maps_categories_and_filters_bounds(monkeypatch):
+    def fake_get(url, params=None, timeout=None):
+        return _FakeResponse(
+            {
+                "results": [
+                    {"theme": "Place Of Assembly", "sub_theme": "Library", "feature_name": "Test Library",
+                     "co_ordinates": {"lat": -37.8140, "lon": 144.9660}},
+                    {"theme": "Place of Worship", "sub_theme": "Church", "feature_name": "Test Church",
+                     "co_ordinates": {"lat": -37.8140, "lon": 144.9660}},
+                    # Outside the CBD bounds - must be dropped.
+                    {"theme": "Place Of Assembly", "sub_theme": "Art Gallery/Museum", "feature_name": "Far Museum",
+                     "co_ordinates": {"lat": -37.9000, "lon": 145.1000}},
+                    # Irrelevant theme - must be dropped.
+                    {"theme": "Health Services", "sub_theme": "Public Hospital", "feature_name": "Test Hospital",
+                     "co_ordinates": {"lat": -37.8140, "lon": 144.9660}},
+                ]
+            }
+        )
+
+    monkeypatch.setattr(httpx, "get", fake_get)
+
+    landmarks = fetch_quiet_place_landmarks(CBD_BOUNDS)
+
+    assert {(landmark["name"], landmark["category"]) for landmark in landmarks} == {
+        ("Test Library", "library"),
+        ("Test Church", "place_of_worship"),
+    }
+
+
+def test_fetch_quiet_place_landmarks_network_failure_returns_empty_list(monkeypatch):
+    def fake_get(url, params=None, timeout=None):
+        raise httpx.ConnectError("boom")
+
+    monkeypatch.setattr(httpx, "get", fake_get)
+
+    assert fetch_quiet_place_landmarks(CBD_BOUNDS) == []

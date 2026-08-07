@@ -12,6 +12,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   library: "LIBRARY · QUIET INDOOR SPACE",
   courtyard: "COURTYARD · SHELTERED QUIET SPACE",
   museum: "MUSEUM · SHELTERED OUTDOOR SPACE",
+  place_of_worship: "PLACE OF WORSHIP · QUIET INDOOR SPACE",
 };
 
 // FR-09 (US 2.1, Stretch): refuge detail with facility info and a walk CTA.

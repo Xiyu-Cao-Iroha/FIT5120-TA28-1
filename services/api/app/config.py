@@ -39,13 +39,16 @@ class Settings(BaseSettings):
     google_maps_api_key: str | None = None
     google_maps_request_timeout_seconds: float = 8.0
 
-    # FR-03: when true, non-demo route comparisons fetch live pedestrian crowd
-    # data from the City of Melbourne open data portal (no API key needed)
-    # instead of the seeded PedestrianDataRepository. Pinned demo scenarios
-    # always use the seeded data regardless of this flag - see
-    # route_comparison.py. Off by default so a fresh clone works without
+    # FR-03/FR-09: when true, (a) non-demo route comparisons fetch live
+    # pedestrian crowd data from the City of Melbourne open data portal
+    # instead of the seeded PedestrianDataRepository, and (b) `python -m
+    # app.seed` refreshes real quiet-place landmarks (libraries, galleries/
+    # museums, places of worship) from the same portal alongside the hand
+    # curated demo refuges. No API key needed - it's all public. Pinned demo
+    # scenarios always use seeded pedestrian data regardless of this flag -
+    # see route_comparison.py. Off by default so a fresh clone works without
     # network access; enable explicitly once you want live data.
-    use_live_pedestrian_data: bool = False
+    use_live_melbourne_open_data: bool = False
     melbourne_open_data_timeout_seconds: float = 8.0
 
     @property

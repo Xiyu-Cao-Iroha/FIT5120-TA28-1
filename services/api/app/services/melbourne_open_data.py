@@ -11,6 +11,13 @@ logger = logging.getLogger(__name__)
 API_BASE_URL = "https://data.melbourne.vic.gov.au/api/explore/v2.1/catalog/datasets"
 SENSOR_LOCATIONS_DATASET = "pedestrian-counting-system-sensor-locations"
 MINUTE_COUNTS_DATASET = "pedestrian-counting-system-past-hour-counts-per-minute"
+LANDMARKS_DATASET = "landmarks-and-places-of-interest-including-schools-theatres-health-services-spor"
+
+# Only landmark sub-themes/themes that are plausibly a quiet indoor space to
+# pause in - the dataset also covers schools, hospitals, sports facilities,
+# theatres etc. which don't fit US 2.1's "quiet place" concept.
+QUIET_PLACE_CATEGORY_BY_SUB_THEME = {"Library": "library", "Art Gallery/Museum": "museum"}
+QUIET_PLACE_CATEGORY_BY_THEME = {"Place of Worship": "place_of_worship"}
 
 # The Explore API v2.1 rejects any limit above 100 (InvalidRESTParameterError),
 # so fetching "recent counts across ~100 CBD sensors" needs pagination.
@@ -145,3 +152,48 @@ class MelbourneOpenDataPedestrianRepository:
         avg_per_minute = sum(matched_counts) / len(matched_counts)
         crowd_score = min(1.0, (avg_per_minute * DEMO_INTERVAL_MINUTES) / REFERENCE_CAPACITY_COUNT)
         return SegmentPedestrianStats(sensor_count=matched_sensor_count, crowd_score=crowd_score, has_coverage=True)
+
+
+def fetch_quiet_place_landmarks(
+    cbd_bounds: tuple[float, float, float, float], timeout_seconds: float = 8.0
+) -> list[dict]:
+    """FR-09: real libraries, galleries/museums, and places of worship from
+    the City of Melbourne open data portal, filtered to plausible "quiet
+    place" categories. Unlike the pedestrian data above, this is meant to be
+    synced into the places table (see seed.py) rather than fetched per
+    request - a refuge needs a stable id across the list -> detail screen
+    flow, which a fresh live fetch on every request can't guarantee.
+
+    The dataset has no per-record id and no bounding-box-filterable lat/lon
+    field, so filtering is: theme/sub-theme server-side (small result set),
+    CBD bounding box client-side.
+    """
+    min_lat, max_lat, min_lon, max_lon = cbd_bounds
+    where = "sub_theme='Library' or sub_theme='Art Gallery/Museum' or theme='Place of Worship'"
+    try:
+        response = httpx.get(
+            f"{API_BASE_URL}/{LANDMARKS_DATASET}/records",
+            params={"where": where, "limit": 100},
+            timeout=timeout_seconds,
+        )
+        response.raise_for_status()
+        results = response.json().get("results", [])
+    except httpx.HTTPError:
+        logger.exception("Melbourne open data landmarks request failed")
+        return []
+
+    landmarks = []
+    for row in results:
+        coords = row.get("co_ordinates")
+        if not coords:
+            continue
+        lat, lon = coords["lat"], coords["lon"]
+        if not (min_lat <= lat <= max_lat and min_lon <= lon <= max_lon):
+            continue
+        category = QUIET_PLACE_CATEGORY_BY_SUB_THEME.get(row.get("sub_theme")) or QUIET_PLACE_CATEGORY_BY_THEME.get(
+            row.get("theme")
+        )
+        if not category or not row.get("feature_name"):
+            continue
+        landmarks.append({"name": row["feature_name"], "category": category, "lat": lat, "lon": lon})
+    return landmarks

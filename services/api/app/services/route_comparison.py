@@ -64,7 +64,7 @@ def compare_routes(
         max_observation_age_minutes=settings.default_max_observation_age_minutes,
     )
     sensor_prefix = _demo_sensor_prefix(origin, destination)
-    if sensor_prefix is None and settings.use_live_pedestrian_data:
+    if sensor_prefix is None and settings.use_live_melbourne_open_data:
         # Pinned demo pairs never take this path, even with the flag on -
         # they must stay reliable for a presentation regardless of the City
         # of Melbourne API's availability or the network at demo time.

@@ -10,6 +10,7 @@ what a live comparison will actually return.
 
 Usage: py -m app.seed   (run from services/api, with the venv active)
 """
+import re
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -22,8 +23,19 @@ from app.config import get_settings
 from app.db import SessionLocal
 from app.models import ClassificationRule, DataSource, PedestrianObservation, PedestrianSensor, Place
 from app.services.geo import point_to_polyline_distance_meters
+from app.services.melbourne_open_data import fetch_quiet_place_landmarks
 from app.services.route_snapshot_cache import route_pair_key, save_snapshot
 from app.services.routing_adapter import get_routing_provider
+
+# Display copy for live-fetched landmarks (app/services/melbourne_open_data.py
+# QUIET_PLACE_CATEGORY_BY_*), which come with a name and coordinates only -
+# no ready-made description the way the hand-curated DEMO_REFUGES have.
+LIVE_LANDMARK_CATEGORY_DESCRIPTION = {
+    "library": "public library",
+    "museum": "public gallery or museum",
+    "place_of_worship": "public place of worship",
+}
+LIVE_LANDMARK_EXTERNAL_ID_PREFIX = "melb-landmark-"
 
 BUSY_CORRIDOR_COUNT = 170  # pedestrians / 5 min -> High Sensory
 CALM_STREET_COUNT = 25  # pedestrians / 5 min -> Low Sensory
@@ -275,6 +287,40 @@ def seed() -> None:
             print(f"Seeded {len(DEMO_REFUGES)} demo refuge places.")
         else:
             print("Refuge places already seeded, skipping.")
+
+        if settings.use_live_melbourne_open_data:
+            # Re-synced every run (unlike the DEMO_REFUGES skip-guard above)
+            # so renamed/closed venues eventually drop out. Matched by a
+            # stable slug of the landmark's own name, not a random UUID, so
+            # re-running this doesn't create duplicates.
+            db.query(Place).filter(Place.source_external_id.like(f"{LIVE_LANDMARK_EXTERNAL_ID_PREFIX}%")).delete(
+                synchronize_session=False
+            )
+            landmarks = fetch_quiet_place_landmarks(
+                cbd_bounds=(settings.cbd_min_lat, settings.cbd_max_lat, settings.cbd_min_lon, settings.cbd_max_lon),
+                timeout_seconds=settings.melbourne_open_data_timeout_seconds,
+            )
+            for landmark in landmarks:
+                slug = re.sub(r"[^a-z0-9]+", "-", landmark["name"].lower()).strip("-")
+                description = LIVE_LANDMARK_CATEGORY_DESCRIPTION[landmark["category"]]
+                db.add(
+                    Place(
+                        id=uuid.uuid4(),
+                        source_external_id=f"{LIVE_LANDMARK_EXTERNAL_ID_PREFIX}{slug}",
+                        name=landmark["name"],
+                        category=landmark["category"],
+                        address=None,
+                        geom=from_shape(Point(landmark["lon"], landmark["lat"]), srid=4326),
+                        place_metadata={
+                            "short_description": f"A {description}.",
+                            "facility_info": "",
+                            "data_source": "verified",
+                            "source_note": "Location from the City of Melbourne open data portal "
+                            "(Landmarks and places of interest dataset).",
+                        },
+                    )
+                )
+            print(f"Seeded {len(landmarks)} live quiet-place landmarks from City of Melbourne open data.")
 
         # Pedestrian observations are time-sensitive (see
         # max_observation_age_minutes), so always reseed fresh rather than
