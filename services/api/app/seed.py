@@ -17,6 +17,7 @@ from datetime import datetime, timedelta, timezone
 
 from geoalchemy2.shape import from_shape
 from shapely.geometry import Point
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
@@ -229,6 +230,49 @@ def _seed_scenario(db: Session, provider, scenario: DemoScenario, now: datetime)
             total_sensors += 1
 
     return total_sensors
+
+
+def refresh_demo_scenario_freshness(db: Session) -> int:
+    """Uniformly shifts every seeded demo-scenario observation's observed_at
+    forward so the most recent one becomes "now", without touching sensor
+    placement or counts. Demo observations are otherwise a fixed snapshot
+    from the last `python -m app.seed` run, so every route silently starts
+    reading "unavailable" once max_observation_age_minutes elapses - called
+    on startup and periodically from app.main's lifespan so the 4 pinned
+    scenarios stay presentable indefinitely without a manual reseed.
+    Prefix-scoped to `demo-*` sensors only, so it never touches real/live
+    sensor data.
+
+    A uniform shift (rather than setting every row to the same literal
+    now()) is required, not just nicer - each sensor has several
+    observations a few minutes apart (see _add_observations), and
+    collapsing them all onto one identical timestamp would violate the
+    (sensor_id, observed_at) unique constraint."""
+    demo_sensor_ids = db.execute(
+        select(PedestrianSensor.id).where(PedestrianSensor.external_id.like("demo-%"))
+    ).scalars().all()
+    if not demo_sensor_ids:
+        return 0
+
+    latest = db.execute(
+        select(func.max(PedestrianObservation.observed_at)).where(
+            PedestrianObservation.sensor_id.in_(demo_sensor_ids)
+        )
+    ).scalar_one()
+    if latest is None:
+        return 0
+
+    delta = datetime.now(timezone.utc) - latest
+    if delta <= timedelta(0):
+        return 0
+
+    result = db.execute(
+        update(PedestrianObservation)
+        .where(PedestrianObservation.sensor_id.in_(demo_sensor_ids))
+        .values(observed_at=PedestrianObservation.observed_at + delta)
+    )
+    db.commit()
+    return result.rowcount
 
 
 def seed() -> None:

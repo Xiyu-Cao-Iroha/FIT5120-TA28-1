@@ -1,15 +1,50 @@
+import asyncio
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api.v1 import health, places, refuges, routes
 from app.config import get_settings
+from app.db import SessionLocal
 from app.errors import ApiError
 from app.schemas import ErrorDetail, ErrorResponse
+from app.seed import refresh_demo_scenario_freshness
 
 settings = get_settings()
 
-app = FastAPI(title="CalmPath API", version="1.0.0")
+# Comfortably under settings.default_max_observation_age_minutes (30 by
+# default) so the periodic refresh always lands well before seeded demo
+# data would otherwise age out - see refresh_demo_scenario_freshness.
+DEMO_FRESHNESS_REFRESH_INTERVAL_SECONDS = 600
+
+
+def _refresh_demo_freshness_once() -> None:
+    db = SessionLocal()
+    try:
+        refresh_demo_scenario_freshness(db)
+    finally:
+        db.close()
+
+
+async def _demo_freshness_loop() -> None:
+    while True:
+        await asyncio.sleep(DEMO_FRESHNESS_REFRESH_INTERVAL_SECONDS)
+        await asyncio.to_thread(_refresh_demo_freshness_once)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await asyncio.to_thread(_refresh_demo_freshness_once)
+    task = asyncio.create_task(_demo_freshness_loop())
+    try:
+        yield
+    finally:
+        task.cancel()
+
+
+app = FastAPI(title="CalmPath API", version="1.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
