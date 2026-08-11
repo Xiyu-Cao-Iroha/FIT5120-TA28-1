@@ -81,8 +81,16 @@ export function PlaceAutocompleteInput({
     try {
       const raw = await resolvePlace(suggestion.place_id);
       const resolved = ResolvedPlaceSchema.parse(raw);
-      onChangeText(resolved.description || suggestion.description);
-      onSelectPlace({ lat: resolved.lat, lon: resolved.lon, description: resolved.description || suggestion.description });
+      // Google's Place Details "formatted_address" (what /places/resolve
+      // returns as description) is often just the postal-style address
+      // without the place name - e.g. selecting "Southern Cross Station,
+      // Melbourne VIC, Australia" resolved to "Melbourne VIC 3000,
+      // Australia". The autocomplete suggestion's own description is what
+      // the user actually saw and clicked, so it's the correct thing to
+      // display - resolve is only needed for lat/lon.
+      const description = suggestion.description || resolved.description;
+      onChangeText(description);
+      onSelectPlace({ lat: resolved.lat, lon: resolved.lon, description });
     } catch {
       // Leave the typed text as-is; validation on submit will catch an
       // unresolved location and show a field-level error (FR-01).
