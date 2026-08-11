@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 
 from app.config import Settings
-from app.schemas import CongestedSegment, CrowdSensitivity, RouteCompareResponse, RouteOptionOut
+from app.schemas import CongestedSegment, CrowdSensitivity, RouteCompareResponse, RouteOptionOut, SensoryLevel
 from app.services.classification import ClassificationRuleConfig, classify
 from app.services.melbourne_open_data import MelbourneOpenDataPedestrianRepository
 from app.services.pedestrian_repository import PedestrianDataRepository
@@ -43,6 +43,25 @@ def _demo_sensor_prefix(origin: tuple[float, float], destination: tuple[float, f
     return f"demo-{key}-" if key else None
 
 
+# Real sensor coverage from the City of Melbourne feed is far sparser than the
+# demo's synthetic placement, so a live route can dip below min_data_coverage on
+# any single request even though it read as clearly low/high moments earlier -
+# showing "unavailable" on every other refresh reads as broken rather than
+# genuinely uncertain. For live (non-demo) routes only, replay the last
+# classification this exact route actually earned instead of a transient
+# coverage gap. Keyed in-process, so it fills in again after a redeploy.
+# Demo scenarios never reach this cache (see the is_live check below) - one of
+# them deliberately exercises the real "unavailable" state and must always
+# show it.
+_LAST_KNOWN_LIVE_STATUS: dict[tuple, tuple[SensoryLevel, float | None, float]] = {}
+
+
+def _live_status_cache_key(
+    origin: tuple[float, float], destination: tuple[float, float], route_name: str
+) -> tuple:
+    return (origin, destination, route_name)
+
+
 def compare_routes(
     db: Session,
     settings: Settings,
@@ -64,7 +83,8 @@ def compare_routes(
         max_observation_age_minutes=settings.default_max_observation_age_minutes,
     )
     sensor_prefix = _demo_sensor_prefix(origin, destination)
-    if sensor_prefix is None and settings.use_live_melbourne_open_data:
+    is_live = sensor_prefix is None and settings.use_live_melbourne_open_data
+    if is_live:
         # Pinned demo pairs never take this path, even with the flag on -
         # they must stay reliable for a presentation regardless of the City
         # of Melbourne API's availability or the network at demo time.
@@ -102,6 +122,15 @@ def compare_routes(
         route_crowd_score = (sum(scored) / len(scored)) if scored else None
 
         sensory_level = classify(route_crowd_score, data_coverage, rule)
+
+        if is_live:
+            cache_key = _live_status_cache_key(origin, destination, candidate.name)
+            if sensory_level == SensoryLevel.unavailable:
+                cached = _LAST_KNOWN_LIVE_STATUS.get(cache_key)
+                if cached is not None:
+                    sensory_level, route_crowd_score, data_coverage = cached
+            else:
+                _LAST_KNOWN_LIVE_STATUS[cache_key] = (sensory_level, route_crowd_score, data_coverage)
 
         congested_segments = [
             CongestedSegment(
