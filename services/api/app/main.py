@@ -1,9 +1,11 @@
 import asyncio
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.api.v1 import health, places, refuges, routes
 from app.config import get_settings
@@ -12,6 +14,7 @@ from app.errors import ApiError
 from app.schemas import ErrorDetail, ErrorResponse
 from app.seed import refresh_demo_scenario_freshness
 
+logger = logging.getLogger(__name__)
 settings = get_settings()
 
 # Comfortably under settings.default_max_observation_age_minutes (30 by
@@ -24,6 +27,12 @@ def _refresh_demo_freshness_once() -> None:
     db = SessionLocal()
     try:
         refresh_demo_scenario_freshness(db)
+    except SQLAlchemyError:
+        # Runs before migrations on a brand-new database (pedestrian_sensors
+        # doesn't exist yet) - this is a best-effort freshness nicety, not a
+        # critical path, so it must never block app startup or crash the
+        # whole process. It'll succeed once the schema exists.
+        logger.warning("Demo scenario freshness refresh skipped (schema not ready yet?)", exc_info=True)
     finally:
         db.close()
 
