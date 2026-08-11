@@ -1,13 +1,13 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { useRouteDetail } from "../../src/api/queries";
-import type { RouteOption } from "../../src/api/schemas";
+import type { CongestedSegment, RouteOption } from "../../src/api/schemas";
 import { BackLink } from "../../src/components/BackLink";
 import { RouteGoogleMap } from "../../src/components/RouteGoogleMap";
 import { formatDistanceKm } from "../../src/lib/format";
 import { colors } from "../../src/theme/colors";
+import { lineStringLengthMeters } from "../../src/lib/wkt";
 
 function subtitleFor(route: RouteOption): string {
   if (route.sensory_level === "unavailable") return "Congestion data unavailable for this route.";
@@ -20,6 +20,38 @@ function whyThisRouteHeading(route: RouteOption): string {
   return "Higher pedestrian congestion";
 }
 
+// Segment numbers/ranges ("Segment 12", "Segments 12-33") are internal
+// bookkeeping the user has no way to relate to anything they can see - the
+// map already shows exactly where the congestion is via the red overlay.
+// The text equivalent (FR-08) should describe congestion in terms a person
+// actually reasons about: how much of the walk, and how many separate busy
+// stretches, in real distance - not raw indices.
+function countCongestedStretches(segments: CongestedSegment[]): number {
+  let stretches = 0;
+  let previousSequence: number | null = null;
+  for (const segment of segments) {
+    if (previousSequence === null || segment.sequence !== previousSequence + 1) {
+      stretches += 1;
+    }
+    previousSequence = segment.sequence;
+  }
+  return stretches;
+}
+
+function congestionSummary(route: RouteOption): string {
+  if (route.congested_segments.length === 0) {
+    return "No highly congested sections identified on this route.";
+  }
+  const stretchCount = countCongestedStretches(route.congested_segments);
+  const congestedMeters = route.congested_segments.reduce(
+    (total, segment) => total + lineStringLengthMeters(segment.geometry),
+    0,
+  );
+  const percent = Math.min(100, Math.round((congestedMeters / route.distance_meters) * 100));
+  const stretchLabel = stretchCount === 1 ? "busy stretch" : "busy stretches";
+  return `This route has ${stretchCount} ${stretchLabel}, covering about ${formatDistanceKm(congestedMeters)} (${percent}%) of the walk.`;
+}
+
 // FR-08: selected route + congested segments identifiable on the map, with
 // equivalent information always available as text below the diagram.
 // Layout follows the Figma "Route Map" screen ("WHY THIS ROUTE" card etc.).
@@ -27,7 +59,6 @@ export default function RouteMapScreen() {
   const router = useRouter();
   const { routeId } = useLocalSearchParams<{ routeId: string }>();
   const { data: route, error, isPending } = useRouteDetail(routeId);
-  const [segmentsExpanded, setSegmentsExpanded] = useState(false);
 
   const goBackToComparison = () => router.back();
 
@@ -74,32 +105,8 @@ export default function RouteMapScreen() {
         <Text style={styles.whyBody}>{route.explanation}</Text>
       </View>
 
-      {route.congested_segments.length === 0 ? (
-        <>
-          <Text style={styles.sectionTitle}>Congested segments (0)</Text>
-          <Text style={styles.detailItem}>No highly congested segments identified on this route.</Text>
-        </>
-      ) : (
-        <>
-          <Pressable
-            style={styles.collapsibleHeader}
-            onPress={() => setSegmentsExpanded((expanded) => !expanded)}
-            accessibilityRole="button"
-            accessibilityLabel={`${segmentsExpanded ? "Hide" : "Show"} congested segment details`}
-            accessibilityState={{ expanded: segmentsExpanded }}
-          >
-            <Text style={styles.sectionTitle}>Congested segments ({route.congested_segments.length})</Text>
-            <Text style={styles.collapsibleToggle}>{segmentsExpanded ? "Hide ▲" : "Show ▼"}</Text>
-          </Pressable>
-          {segmentsExpanded &&
-            route.congested_segments.map((segment) => (
-              <Text key={segment.sequence} style={styles.detailItem}>
-                Segment {segment.sequence + 1}: {segment.sensory_level === "high" ? "High Sensory" : "Low Sensory"}
-                {segment.crowd_score != null ? ` (score ${segment.crowd_score.toFixed(2)})` : ""}
-              </Text>
-            ))}
-        </>
-      )}
+      <Text style={styles.sectionTitle}>Congestion along this route</Text>
+      <Text style={styles.detailItem}>{congestionSummary(route)}</Text>
 
       <Text style={styles.sectionTitle}>Route details</Text>
       <Text style={styles.detailItem}>Duration: {route.duration_minutes} min</Text>
@@ -153,13 +160,6 @@ const styles = StyleSheet.create({
   whyBody: { fontSize: 14, color: colors.body, lineHeight: 20 },
   sectionTitle: { fontSize: 13, fontWeight: "700", color: colors.caption, letterSpacing: 0.4, marginTop: 10 },
   detailItem: { fontSize: 14, color: colors.body, lineHeight: 20 },
-  collapsibleHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    minHeight: 44,
-  },
-  collapsibleToggle: { fontSize: 13, fontWeight: "700", color: colors.primary },
   errorTitle: { fontSize: 18, fontWeight: "700", color: colors.heading, textAlign: "center" },
   errorBody: { fontSize: 15, color: colors.body, textAlign: "center" },
   primaryButton: {
