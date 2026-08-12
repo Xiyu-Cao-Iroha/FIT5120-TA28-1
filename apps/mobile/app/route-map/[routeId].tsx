@@ -14,10 +14,11 @@ function subtitleFor(route: RouteOption): string {
   return route.sensory_level === "low" ? "Lower-congestion walking route" : "Higher-congestion walking route";
 }
 
-function whyThisRouteHeading(route: RouteOption): string {
-  if (route.sensory_level === "unavailable") return "Congestion data unavailable";
-  if (route.is_recommended) return "Recommended for comparatively lower congestion";
-  return "Higher pedestrian congestion";
+// "Why this route" only makes sense on the route the app actually put
+// forward. On the alternatives it reads as though they were chosen for the
+// user, right before the card explains they are the busier option.
+function explanationCardLabel(route: RouteOption): string {
+  return route.is_recommended ? "WHY THIS ROUTE" : "ABOUT THIS ROUTE";
 }
 
 // Segment numbers/ranges ("Segment 12", "Segments 12-33") are internal
@@ -99,9 +100,12 @@ export default function RouteMapScreen() {
 
       <RouteGoogleMap routeGeometry={route.geometry} congestedSegments={route.congested_segments} />
 
+      {/* The route's own sensory level is already stated in the subtitle
+          above, so this card carries only the comparison against the
+          recommended route - repeating the level here said the same thing
+          three times on one screen. */}
       <View style={styles.whyCard}>
-        <Text style={styles.whyLabel}>WHY THIS ROUTE</Text>
-        <Text style={styles.whyHeading}>{whyThisRouteHeading(route)}</Text>
+        <Text style={styles.whyLabel}>{explanationCardLabel(route)}</Text>
         <Text style={styles.whyBody}>{route.explanation}</Text>
       </View>
 
@@ -152,12 +156,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: colors.cardBackground,
     padding: 16,
-    gap: 4,
+    gap: 6,
     marginTop: 4,
   },
   whyLabel: { fontSize: 11, fontWeight: "700", color: colors.caption, letterSpacing: 0.6 },
-  whyHeading: { fontSize: 16, fontWeight: "700", color: colors.heading },
-  whyBody: { fontSize: 14, color: colors.body, lineHeight: 20 },
+  whyBody: { fontSize: 15, color: colors.heading, lineHeight: 21 },
   sectionTitle: { fontSize: 13, fontWeight: "700", color: colors.caption, letterSpacing: 0.4, marginTop: 10 },
   detailItem: { fontSize: 14, color: colors.body, lineHeight: 20 },
   errorTitle: { fontSize: 18, fontWeight: "700", color: colors.heading, textAlign: "center" },
