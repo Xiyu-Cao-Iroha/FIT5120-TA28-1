@@ -30,7 +30,7 @@ export default function RouteResultsScreen() {
     [params.destinationLat, params.destinationLon]
   );
 
-  const { crowdSensitivity } = usePreference();
+  const { crowdSensitivity, sensoryTolerance } = usePreference();
   const { data, error, isPending, isFetching, refetch } = useRouteComparison(origin, destination, crowdSensitivity);
 
   const goEditDestination = () => router.back();
@@ -99,19 +99,20 @@ export default function RouteResultsScreen() {
   const recommended = data.routes.find((r) => r.is_recommended);
 
   // Figma's recommended-route caption references the user's own preference
-  // directly ("Recommended for your high crowd sensitivity preference.")
-  // when one is set and the routes aren't all congested; otherwise fall
-  // back to the backend's own congestion-based explanation.
+  // directly when one is set and the routes aren't all congested; otherwise
+  // fall back to the backend's own congestion-based explanation. This quotes
+  // the tolerance wording the user actually chose, not the inverted
+  // crowd-sensitivity value sent to the API (see src/state/preference.tsx).
   const displayRoutes = data.routes.map((route) => {
-    if (route.is_recommended && !allCongested && crowdSensitivity) {
-      return { ...route, explanation: `Recommended for your ${crowdSensitivity} crowd sensitivity preference.` };
+    if (route.is_recommended && !allCongested && sensoryTolerance) {
+      return { ...route, explanation: `Recommended for your ${sensoryTolerance} sensory tolerance preference.` };
     }
     return route;
   });
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <BackLink label="Destination" onPress={goEditDestination} />
+      <BackLink label="Search" onPress={goEditDestination} />
       <Text style={styles.title}>{allCongested ? "Routes have some congestion" : "Choose a calmer route"}</Text>
       <Text style={styles.subtitle}>
         {allCongested

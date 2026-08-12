@@ -2,6 +2,9 @@
 // Criteria.docx) so the built screens match the approved designs.
 export const colors = {
   pageBackground: "#EAEAE7",
+  // The redesigned home screen sits on a lighter, cooler ground than the rest
+  // of the app so its white search card still reads as a raised surface.
+  homeBackground: "#F6F8F6",
   cardBackground: "#FFFFFF",
   cardBorder: "#DEDFDB",
 

@@ -19,6 +19,9 @@ interface Props {
   onSelectPlace: (place: SelectedPlace) => void;
   hasError?: boolean;
   accessibilityLabel: string;
+  // "embedded" drops the field's own card chrome so several inputs can share
+  // one surrounding card (the Home screen's origin/destination search card).
+  variant?: "standalone" | "embedded";
 }
 
 const DEBOUNCE_MS = 300;
@@ -35,6 +38,7 @@ export function PlaceAutocompleteInput({
   onSelectPlace,
   hasError,
   accessibilityLabel,
+  variant = "standalone",
 }: Props) {
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -101,7 +105,12 @@ export function PlaceAutocompleteInput({
 
   return (
     <View style={styles.wrapper}>
-      <View style={[styles.fieldCard, hasError && styles.fieldCardError]}>
+      <View
+        style={[
+          variant === "embedded" ? styles.fieldEmbedded : styles.fieldCard,
+          hasError && (variant === "embedded" ? styles.fieldEmbeddedError : styles.fieldCardError),
+        ]}
+      >
         <Text style={styles.fieldLabel}>{label}</Text>
         <View style={styles.inputRow}>
           <TextInput
@@ -149,6 +158,8 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   fieldCardError: { borderColor: colors.errorText },
+  fieldEmbedded: { paddingVertical: 2, gap: 2 },
+  fieldEmbeddedError: { borderLeftWidth: 2, borderLeftColor: colors.errorText, paddingLeft: 10, marginLeft: -12 },
   fieldLabel: { fontSize: 11, fontWeight: "700", color: colors.caption, letterSpacing: 0.6 },
   inputRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   fieldInput: { flex: 1, fontSize: 17, fontWeight: "600", color: colors.heading, minHeight: 26, padding: 0 },
